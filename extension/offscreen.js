@@ -54,6 +54,13 @@ async function startRecording(streamId) {
         mediaRecorder.start();
         console.log("Recording started...");
 
+        // Automatically stop recording after 5 seconds of capturing!
+        setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                stopRecording();
+            }
+        }, 5000);
+
     } catch (err) {
         console.error("Error accessing tab audio: ", err);
         chrome.runtime.sendMessage({

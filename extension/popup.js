@@ -31,16 +31,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Tab Audio Capture ---
     btnScanTab.addEventListener('click', async () => {
         if (!isRecordingTab) {
-            // Start recording
-            chrome.runtime.sendMessage({ action: 'startTabCapture' }, (response) => {
-                if (response && response.error) {
-                    alert('Error: ' + response.error);
+            // Get streaming ID first from popup to avoid background script limitations
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const activeTab = tabs[0];
+                if (!activeTab) {
+                    alert("Error: Please open a regular website (like youtube) first!");
                     return;
                 }
-                isRecordingTab = true;
-                chrome.storage.local.set({ isRecordingTab: true });
-                updateTabButtonUI(true);
-                setStatus('listening', 'Capturing Tab Audio');
+
+                chrome.tabCapture.getMediaStreamId({ targetTabId: activeTab.id }, (streamId) => {
+                    if (chrome.runtime.lastError || !streamId) {
+                        const errorMsg = chrome.runtime.lastError ? chrome.runtime.lastError.message : "Failed to get tab audio";
+                        alert("Capture Error: " + errorMsg + "\nTip: Make sure you are not on a chrome:// page!");
+                        return;
+                    }
+
+                    // Start recording using the stream ID
+                    chrome.runtime.sendMessage({ action: 'startTabCapture', streamId: streamId }, () => {
+                        isRecordingTab = true;
+                        chrome.storage.local.set({ isRecordingTab: true });
+                        updateTabButtonUI(true);
+                        setStatus('listening', 'Capturing Audio (5s)...');
+                    });
+                });
             });
         } else {
             // Stop recording

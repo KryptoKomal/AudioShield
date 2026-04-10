@@ -19,33 +19,17 @@ async function setupOffscreenDocument(path) {
 // Handle messages from the popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'startTabCapture') {
-        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-            const activeTab = tabs[0];
-            if (!activeTab) {
-                sendResponse({ error: 'No active tab found' });
-                return;
-            }
-
-            // Get the stream ID
-            chrome.tabCapture.getMediaStreamId({ targetTabId: activeTab.id }, async (streamId) => {
-                if (chrome.runtime.lastError || !streamId) {
-                    const errorMessage = chrome.runtime.lastError ? chrome.runtime.lastError.message : 'Failed to get stream ID';
-                    console.error("Capture Error:", errorMessage);
-                    sendResponse({ error: errorMessage });
-                    return;
-                }
-                
-                await setupOffscreenDocument('offscreen.html');
-                
-                // Instruct offscreen doc to start recording using the stream ID
-                chrome.runtime.sendMessage({
-                    type: 'START_RECORDING',
-                    streamId: streamId
-                });
-                
-                sendResponse({ status: 'Starting capture...' });
+        (async () => {
+            await setupOffscreenDocument('offscreen.html');
+            
+            // Instruct offscreen doc to start recording using the stream ID passed from popup
+            chrome.runtime.sendMessage({
+                type: 'START_RECORDING',
+                streamId: request.streamId
             });
-        });
+            
+            sendResponse({ status: 'Capture processing dispatched...' });
+        })();
         return true; // Keep message channel open for async
     }
 
